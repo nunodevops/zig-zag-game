@@ -58,7 +58,7 @@
          bckCanvas.height = window.innerHeight;
 
          // create background
-         const background = new Background(currentLevel);
+         let background = new Background(currentLevel);
          background.updatePattern(bckCtx, speed);
 
          // foreground
@@ -71,7 +71,7 @@
          let track = new Track(x, y , N, shortSide, longSide, minLong, maxLong, minShort, maxShort, roundness);
 
          // player
-         const player = new Player(
+         let player = new Player(
             shortSide / 2,
             shortSide / 2,
             shortSide * 0.2,
@@ -166,23 +166,15 @@
             gameOverDisplay.style.display = 'none';
             
             //reset background
-            background.level = 0;
-            bckCtx.fillRect(0, 0, this.width, this.height);
-            background.active = true;
-            background.items = [];
-            background.updatePattern(bckCtx, player.speed);
+            background = undefined;
+            background = new Background(currentLevel);
+            background.updatePattern(bckCtx, speed);
             
             scoreDisplay.textContent = 'Level: ' + player.score;
 
             // reset player
-            player.x = shortSide / 2;
-            player.y = shortSide / 2;
-            player.radius = shortSide * 0.2;
-            player.direction = direction;
-            player.speed = speed;
-            player.timeLeft = timeLeft;
-            player.score = background.level;
-            player.particles = [];
+            player = undefined;
+            player = new Player(shortSide / 2, shortSide / 2, shortSide * 0.2, speed, direction, timeLeft, score);
 
             // reset bonus
             bonus = undefined;
