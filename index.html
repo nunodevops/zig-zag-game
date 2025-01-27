@@ -2,63 +2,251 @@
 <html>
    <head>
       <title>ZigZag Game</title>
-   </head>
-   <body style="margin: 0px; overflow: hidden">
-      <canvas id="myCanvas" style="background-color: coral"></canvas>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+      <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, shrink-to-fit=yes, user-scalable=no">
+      <link rel="stylesheet" type="text/css" href="style.css">
+
       <script src="rectangle.js"></script>
       <script src="player.js"></script>
       <script src="track.js"></script>
+      <script src="background.js"></script>
+      <script src="bonus.js"></script>
+      <script src="util.js"></script>
+      <script src="particles.js"></script>
+   </head>
+   <body style="margin: 0px; overflow: hidden">
+      <canvas id="bckCanvas"></canvas>
+      <canvas id="myCanvas"></canvas>
+
+      <div id="score"></div>
+      <div id="timeLeft"></div>
+      <div id="startMessage"></div>
+      <div id="gameOver">
+         <p id="gameOverMessage"></p>
+        <button id="restartButton" onclick="restartGame()"></button>
+      </div>
+
       <script>
-         myCanvas.width = window.innerWidth;
-         myCanvas.height = window.innerHeight;
-
-         const ctx = myCanvas.getContext("2d");
-
+         // consts
          const shortSide = 100;
+         const maxShort = 125;
+         const minShort = 75;
          const longSide = 300;
+         const maxLong = 550;
+         const minLong = 200;
          const N = 10;
          const x = 0;
          const y = 0;
-         const speed = 4;
+         const timeLeft = 60; // 60 seconds
+         const score = 0;
+         const speed = 2;
+         const direction = 'right';
+         const roundness = 25;
 
-         const track = new Track(x, y , N, shortSide, longSide);
+         let isGameStarted = false;
+         let isGameOver = false;
+         let isPlayerDying = false;
+         let countDownStartGame = 3;
+         let countdown;
+         let createBonusInterval;
+         let currentLevel = 0;
 
+         // background
+         const bckCanvas = document.getElementById('bckCanvas');
+         const bckCtx = bckCanvas.getContext('2d');
+         bckCanvas.width = window.innerWidth;
+         bckCanvas.height = window.innerHeight;
+
+         // create background
+         const background = new Background(currentLevel);
+         background.updatePattern(bckCtx, speed);
+
+         // foreground
+         const myCanvas = document.getElementById('myCanvas');
+         const ctx = myCanvas.getContext('2d');
+         myCanvas.width = window.innerWidth;
+         myCanvas.height = window.innerHeight;
+         
+         // track
+         let track = new Track(x, y , N, shortSide, longSide, minLong, maxLong, minShort, maxShort, roundness);
+
+         // player
          const player = new Player(
             shortSide / 2,
             shortSide / 2,
             shortSide * 0.2,
-            speed
+            speed,
+            direction,
+            timeLeft,
+            score
          );
 
-         myCanvas.addEventListener("pointerdown", () =>
-            player.changeDirection()
-         );
+         // bonus
+         let bonus = new Bonus(myCanvas.width, myCanvas.height, shortSide / 2);
+         
+         // click management
+         myCanvas.addEventListener('pointerdown', () => {
+            if (!isPlayerDying && isGameStarted)
+               player.changeDirection();
+         });
 
-         animate();
+         // score display
+         const scoreDisplay = document.getElementById('score');
+         scoreDisplay.textContent = 'Level: 0';
+   
+         // timeLeft display
+         const timeLeftDisplay = document.getElementById('timeLeft');
+         timeLeftDisplay.textContent = ' ⏱ ' + player.timeLeft;
 
-         function animate() {
-            player.move();
-            track.adjustFor(player);
-            if (!track.contains(player)) {
-               return;
-            }
+         // start message
+         const startMessageDisplay = document.getElementById('startMessage');
+         startMessageDisplay.style.display = 'none';
 
-            ctx.clearRect(0, 0, myCanvas.width, myCanvas.height);
-
-            ctx.save();
-            ctx.translate(myCanvas.width / 2, myCanvas.height / 2);
-            ctx.rotate(-3 * Math.PI / 4);
-
-            ctx.translate(-player.x, -player.y);
-
-            track.draw(ctx);
-            player.draw(ctx);
-
-            ctx.restore();
-
-            requestAnimationFrame(animate);
+         function startMessage(numCountDown, msg) {
+            msg.style.display = 'block';
+            msg.innerText = 'Tap to change direction.' + '\n\n' + numCountDown;
          }
 
+         // game over message
+         const gameOverDisplay = document.getElementById('gameOver');
+         const gameOverMessageDisplay = document.getElementById('gameOverMessage');
+         const restartButtonDisplay = document.getElementById('restartButton');
+
+         // animate game
+         function animate() {
+            // clear canvas
+            ctx.clearRect(0, 0, myCanvas.width, myCanvas.height);
+
+            player.move();
+            track.adjustFor(player);
+            
+            ctx.save();
+               track.rotate(ctx);
+               track.draw(ctx);
+               bonus.draw(ctx);
+               player.draw(ctx);
+
+               // player collided
+               if (!track.contains(player) || !player.isValidtimeLeft(player) || isPlayerDying) {
+                  clearInterval(countdown);
+                  clearInterval(createBonusInterval);
+                  isPlayerDying = true;
+                  player.die(player);
+                  if(isPlayerDying == false)
+                     gameOver();
+               }
+            ctx.restore();
+
+            // add score
+            player.addScore(player);
+            scoreDisplay.textContent = 'Level: ' + player.score;
+
+            // timeLeft
+            timeLeftDisplay.textContent = ' ⏱ ' + player.timeLeft;
+
+            // Update and draw background
+            background.updatePattern(bckCtx, player.speed);
+            
+            // request frame
+            if (isGameStarted)
+               requestAnimationFrame(animate);
+         }
+
+         function gameOver() {
+            gameOverDisplay.style.display = 'block';
+            gameOverMessageDisplay.innerText = 'Game Over';
+            restartButtonDisplay.innerText = 'Restart';
+            background.active = false;
+            restartButtonDisplay.onclick = () => {
+               restartGame();
+            };
+         }
+
+         function restartGame() {
+            gameOverDisplay.style.display = 'none';
+            
+            //reset background
+            background.level = 0;
+            bckCtx.fillRect(0, 0, this.width, this.height);
+            background.active = true;
+            background.items = [];
+            background.updatePattern(bckCtx, player.speed);
+            
+            scoreDisplay.textContent = 'Level: ' + player.score;
+
+            // reset player
+            player.x = shortSide / 2;
+            player.y = shortSide / 2;
+            player.radius = shortSide * 0.2;
+            player.direction = direction;
+            player.speed = speed;
+            player.timeLeft = timeLeft;
+            player.score = background.level;
+            player.particles = [];
+
+            // reset bonus
+            bonus = undefined;
+            bonus = new Bonus(myCanvas.width, myCanvas.height, shortSide / 2);
+
+            // reset track
+            track = undefined;
+            track = new Track(x, y , N, shortSide, longSide, minLong, maxLong, minShort, maxShort, roundness);
+
+            //reset vars
+            countDownStartGame = 3;
+
+            // reset canvas
+            ctx.clearRect(0, 0, myCanvas.width, myCanvas.height);
+
+            // start
+            startGame();
+         }
+
+         // start game
+         function startGame() {
+            // game started
+            isGameOver = false;
+            isPlayerDying = false;
+
+            // hide
+            gameOverDisplay.style.display = 'none';
+
+            // show track and player
+            ctx.save();
+               track.rotate(ctx);
+               track.draw(ctx); 
+               player.draw(ctx);
+            ctx.restore();
+            // start message countdown
+            const timer = setInterval(function() {
+               startMessage(countDownStartGame, startMessageDisplay);
+               if (countDownStartGame <= 0) {
+                  clearInterval(timer);
+                  startMessageDisplay.style.display = 'none';
+               }
+               countDownStartGame--;
+            }, 1000);
+
+            // starts the clicks
+            setTimeout(()=> {
+               // player timeout countdown
+               countdown = setInterval(function() {
+                     player.timeLeft --;
+                     }, 1000);
+
+               // generate a bonus every 10 sec
+               createBonusInterval = setInterval(function() {
+                  bonus.generateItem(bonus);
+               }, 10000);
+
+               // starts
+               isGameStarted = true;
+               animate();  
+            }, 4000);
+         }
+
+         // start the game
+         startGame();
       </script>
    </body>
 </html>

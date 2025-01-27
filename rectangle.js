@@ -1,9 +1,14 @@
 class Rectangle {
-   constructor(x, y, width, height) {
+   constructor(x, y, width, height, direction, hasShadow, shadowDirection, color, roundness) {
       this.x = x;
       this.y = y;
       this.width = width;
       this.height = height;
+      this.direction = direction; // needed for calculate bonus coordinates.
+      this.color = color;
+      this.hasShadow = hasShadow;
+      this.shadowDirection = shadowDirection;
+      this.roundness = roundness;
    }
 
    contains(player) {
@@ -20,7 +25,21 @@ class Rectangle {
    }
 
    draw(ctx) {
-      ctx.fillStyle = "blue";
-      ctx.fillRect(this.x, this.y, this.width, this.height);
+      const offSet = this.width * 0.02;
+      ctx.save();
+         ctx.fillStyle = this.color;
+
+         if (this.hasShadow) {
+            ctx.shadowColor = "rgba(0, 0, 0, 0.3)";
+            if (this.shadowDirection === "down")
+               ctx.shadowOffsetX = -offSet;
+            else
+               ctx.shadowOffsetY = -offSet;   
+         }
+
+         ctx.roundRect(this.x, this.y, this.width, this.height, this.roundness);
+         
+         ctx.fill();
+      ctx.restore();
    }
 }
