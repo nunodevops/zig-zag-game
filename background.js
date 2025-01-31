@@ -10,8 +10,8 @@ class Background {
     initRectangles() {
         for (let i = 0; i < 50; i++) {
             this.items.push({
-                x: Math.random() * bckCanvas.width,
-                y: Math.random() * bckCanvas.height,
+                x: Math.random() * backgroundCanvas.width,
+                y: Math.random() * backgroundCanvas.height,
                 width: Math.random() * 90 + 20,
                 height: Math.random() * 90 + 20,
                 speed: Math.random() * 2 + 1
@@ -20,43 +20,53 @@ class Background {
     }
 
     updateColors() {
+        const backgroundRandomColor = getRandomColor(false);
+        let rectangleRandomColor = getRandomColor(true);
+        // prevent colors to be equal
+        while (true) {
+            if (!isEqualRGBColor(rectangleRandomColor, backgroundRandomColor))
+                break;
+            else
+                rectangleRandomColor = getRandomColor(true);
+        }
+
         if (this.level % 2 === 0) {
-            this.backgroundColor = getRandomColor();
+            this.backgroundColor = backgroundRandomColor;
             this.rectangleColor = 'darkblue';
         } else {
             this.backgroundColor = 'darkgray';
-            this.rectangleColor = getRandomColor();
+            this.rectangleColor = rectangleRandomColor;
         }
     }
 
-    drawBackground(ctx) {
-        ctx.fillStyle = this.backgroundColor;
-        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    drawBackground(bckCtx) {
+        bckCtx.fillStyle = this.backgroundColor;
+        bckCtx.fillRect(0, 0, bckCtx.canvas.width, bckCtx.canvas.height);
 
         this.items.forEach(item => {
-            ctx.save();
-            ctx.fillStyle = this.rectangleColor;
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-            ctx.shadowBlur = 10;
-            ctx.fillRect(item.x, item.y, item.width, item.height);
-            ctx.stroke();
-            ctx.restore();
+            bckCtx.save();
+            bckCtx.fillStyle = this.rectangleColor;
+            bckCtx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+            bckCtx.shadowBlur = 10;
+            bckCtx.fillRect(item.x, item.y, item.width, item.height);
+            bckCtx.stroke();
+            bckCtx.restore();
         });
     }
 
-    updatePattern(ctx, playerSpeed) {
+    updatePattern(bckCtx) {
         // Clear the canvas
-        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        bckCtx.clearRect(0, 0, bckCtx.canvas.width, bckCtx.canvas.height);
 
         // Draw the background
-        this.drawBackground(ctx);
+        this.drawBackground(bckCtx);
 
         // Update the position of the rectangles
         this.items.forEach(item => {
-            item.y += ((playerSpeed / 10) * item.speed);
-            if (item.y > ctx.canvas.height) {
+            item.y += ((player.speed / 10) * item.speed);
+            if (item.y > bckCtx.canvas.height) {
                 item.y = -item.height;
-                item.x = Math.random() * ctx.canvas.width;
+                item.x = Math.random() * bckCtx.canvas.width;
             }
         });
     }

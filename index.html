@@ -15,84 +15,119 @@
       <script src="particles.js"></script>
    </head>
    <body style="margin: 0px; overflow: hidden">
-      <canvas id="bckCanvas"></canvas>
-      <canvas id="myCanvas"></canvas>
+      <canvas id="backgroundCanvas"></canvas>
+      <canvas id="foregroundCanvas"></canvas>
+      <canvas id="patternCanvas"></canvas>
 
       <div id="score"></div>
       <div id="timeLeft"></div>
       <div id="startMessage"></div>
       <div id="gameOver">
          <p id="gameOverMessage"></p>
-        <button id="restartButton" onclick="restartGame()"></button>
+         <button id="restartButton" onclick="restartGame()"></button>
+      </div>
+      <div id="lives"></div>
+      <div id="pause">
+         <button id="pauseButton" onclick="pauseGame()"></button>
       </div>
 
       <script>
          // consts
-         const shortSide = 100;
-         const maxShort = 125;
-         const minShort = 75;
-         const longSide = 300;
-         const maxLong = 550;
-         const minLong = 200;
-         const N = 10;
-         const x = 0;
-         const y = 0;
-         const timeLeft = 60; // 60 seconds
-         const score = 0;
-         const speed = 2;
-         const direction = 'right';
-         const roundness = 25;
+         const SHORTSIDE = 100;
+         const MAXSHORT = 120;
+         const MINSHORT = 80;
+         const LONGSIDE = 350;
+         const MAXLONG = 600;
+         const MINLONG = 250;
+         const TOTRECTANGLES = 10;
+         const INITPOSIX = 0;
+         const INITPOSIY = 0;
+         const INITIALTIME = 60; // 60 seconds
+         const INITIALSCORE = 0;
+         const INITIALSPEED = 2;
+         const INITIALDIRECTION = 'right';
+         const TRACKROUNDNESS = 5;
+         const LIFE = '🔴';
+         const INITIAL_LIFES = 3;
 
          let isGameStarted = false;
+         let isGamePaused = false;
          let isGameOver = false;
          let isPlayerDying = false;
-         let countDownStartGame = 3;
+         let countDownToStartGame = 3;
          let countdown;
          let createBonusInterval;
+         let createBonusLiveInterval;
          let currentLevel = 0;
 
-         // background
-         const bckCanvas = document.getElementById('bckCanvas');
-         const bckCtx = bckCanvas.getContext('2d');
-         bckCanvas.width = window.innerWidth;
-         bckCanvas.height = window.innerHeight;
+         // patterns
+         const patternCanvas = document.getElementById("patternCanvas");
+         const patternContext = patternCanvas.getContext("2d");
 
-         // create background
-         let background = new Background(currentLevel);
-         background.updatePattern(bckCtx, speed);
+         // background
+         const backgroundCanvas = document.getElementById('backgroundCanvas');
+         const bckCtx = backgroundCanvas.getContext('2d');
+         backgroundCanvas.width = window.innerWidth;
+         backgroundCanvas.height = window.innerHeight;
 
          // foreground
-         const myCanvas = document.getElementById('myCanvas');
-         const ctx = myCanvas.getContext('2d');
-         myCanvas.width = window.innerWidth;
-         myCanvas.height = window.innerHeight;
-         
+         const foregroundCanvas = document.getElementById('foregroundCanvas');
+         const ctx = foregroundCanvas.getContext('2d');
+         foregroundCanvas.width = window.innerWidth;
+         foregroundCanvas.height = window.innerHeight;
+
+         // objects
+         // background
+         let background = new Background(currentLevel);
+
          // track
-         let track = new Track(x, y , N, shortSide, longSide, minLong, maxLong, minShort, maxShort, roundness);
+         let track = new Track(
+            INITPOSIX, 
+            INITPOSIY , 
+            TOTRECTANGLES, 
+            SHORTSIDE, 
+            LONGSIDE, 
+            MINLONG, 
+            MAXLONG, 
+            MINSHORT, 
+            MAXSHORT, 
+            TRACKROUNDNESS);
 
          // player
          let player = new Player(
-            shortSide / 2,
-            shortSide / 2,
-            shortSide * 0.2,
-            speed,
-            direction,
-            timeLeft,
-            score
+            SHORTSIDE / 2,
+            SHORTSIDE / 2,
+            SHORTSIDE * 0.2,
+            INITIALSPEED,
+            INITIALDIRECTION,
+            INITIALTIME,
+            INITIALSCORE,
+            INITIAL_LIFES,
          );
 
          // bonus
-         let bonus = new Bonus(myCanvas.width, myCanvas.height, shortSide / 2);
-         
+         let bonus = new Bonus(
+            foregroundCanvas.width, 
+            foregroundCanvas.height, 
+            SHORTSIDE / 2
+         );
+
+         // background
+         background.updatePattern(bckCtx);
+
          // click management
-         myCanvas.addEventListener('pointerdown', () => {
-            if (!isPlayerDying && isGameStarted)
+         foregroundCanvas.addEventListener('pointerdown', () => {
+            if (!isPlayerDying && isGameStarted && !isGamePaused)
                player.changeDirection();
          });
 
          // score display
          const scoreDisplay = document.getElementById('score');
          scoreDisplay.textContent = 'Level: 0';
+
+         // player lives
+         const livesDisplay = document.getElementById('lives');
+         livesDisplay.textContent = LIFE.repeat(player.lives);
    
          // timeLeft display
          const timeLeftDisplay = document.getElementById('timeLeft');
@@ -107,18 +142,79 @@
             msg.innerText = 'Tap to change direction.' + '\n\n' + numCountDown;
          }
 
+         function startMessageTimer() {
+            // start message countdown
+            const timer = setInterval(function() {
+               startMessage(countDownToStartGame, startMessageDisplay);
+               if (countDownToStartGame <= 0) {
+                  clearInterval(timer);
+                  startMessageDisplay.style.display = 'none';
+               }
+               countDownToStartGame--;
+            }, 1000);
+         }
+
          // game over message
          const gameOverDisplay = document.getElementById('gameOver');
          const gameOverMessageDisplay = document.getElementById('gameOverMessage');
          const restartButtonDisplay = document.getElementById('restartButton');
 
+         // pause
+         const pauseGameButton = document.getElementById('pauseButton');
+         pauseGameButton.textContent = '⏸︎';
+
+         function pauseGame() {
+            if (!isPlayerDying && isGameStarted) {
+               if (isGamePaused) {
+                  isGamePaused = false;
+                  pauseGameButton.textContent = '⏸︎';
+                  startTimers();
+                  animate();
+               }
+               else {
+                  isGamePaused = true;
+                  pauseGameButton.textContent = '⏵︎';
+                  stopTimers();
+               }
+            }
+         }
+
+         // start timers
+         function startTimers() {
+            // player timeout countdown
+            countdown = setInterval(function() {
+               player.timeLeft --;
+            }, 1000);
+
+            // generate a bonus every 10 sec
+            createBonusInterval = setInterval(function() {
+               bonus.generateItem(bonus, 0);
+            }, 10000);
+            
+            // generate a live every 20 sec to 60 seg
+            const randTime = Math.floor(Math.random() * (6 - 2 + 1)) + 2;
+            createBonusLiveInterval = setInterval(function() {
+               bonus.generateItem(bonus, 1);
+            }, randTime * 10000);
+         }
+
+         // stop timers
+         function stopTimers() {
+            clearInterval(countdown);
+            clearInterval(createBonusInterval);
+            clearInterval(createBonusLiveInterval);
+         }
+
+
+
+         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
          // animate game
          function animate() {
             // clear canvas
-            ctx.clearRect(0, 0, myCanvas.width, myCanvas.height);
+            ctx.clearRect(0, 0, foregroundCanvas.width, foregroundCanvas.height);
 
             player.move();
-            track.adjustFor(player);
+            track.adjust();
             
             ctx.save();
                track.rotate(ctx);
@@ -127,31 +223,46 @@
                player.draw(ctx);
 
                // player collided
-               if (!track.contains(player) || !player.isValidtimeLeft(player) || isPlayerDying) {
-                  clearInterval(countdown);
-                  clearInterval(createBonusInterval);
+               if (!track.contains(player) || !player.isValidtimeLeft() || isPlayerDying) {
+                  stopTimers();
                   isPlayerDying = true;
-                  player.die(player);
-                  if(isPlayerDying == false)
-                     gameOver();
+                  player.die();
+                  if(isPlayerDying == false) {
+                     if (player.lives == 0) {
+                        gameOver();
+                     }
+                     else {
+                        player.removeLive();
+                        restoreGame();
+                     }
+                  }
                }
             ctx.restore();
 
             // add score
-            player.addScore(player);
+            player.addScore();
             scoreDisplay.textContent = 'Level: ' + player.score;
+
+            // player lives
+            if (player.lives > 0)
+               livesDisplay.textContent = LIFE.repeat(player.lives);
+            else
+               livesDisplay.textContent = '-';
 
             // timeLeft
             timeLeftDisplay.textContent = ' ⏱ ' + player.timeLeft;
 
             // Update and draw background
-            background.updatePattern(bckCtx, player.speed);
+            background.updatePattern(bckCtx);
             
             // request frame
-            if (isGameStarted)
+            if (isGameStarted && !isGamePaused)
                requestAnimationFrame(animate);
          }
 
+         ///////////////////////////////////////////////////////////////////////////////////////////////////
+         
+         // game over
          function gameOver() {
             gameOverDisplay.style.display = 'block';
             gameOverMessageDisplay.innerText = 'Game Over';
@@ -162,33 +273,119 @@
             };
          }
 
+         // restore game, after player die
+         function restoreGame() {
+            background.active = false;
+            isGameStarted = false;
+            isGameOver = false;
+            isPlayerDying = false;
+
+            // reset player position
+            player.speed = INITIALSPEED;
+            if (player.direction == 'right') {
+               player.velocityX = INITIALSPEED;
+               player.velocityY = 0;
+               player.targetVelocityX = INITIALSPEED;
+               player.targetVelocityY = 0;
+            }
+            else {
+               player.velocityX = 0;
+               player.velocityY = INITIALSPEED;
+               player.targetVelocityX = 0;
+               player.targetVelocityY = INITIALSPEED;
+            }
+
+            player.radius = SHORTSIDE * 0.2,
+            player.draw(ctx);
+
+            //reset vars
+            countDownToStartGame = 3;
+
+            // restore time
+            if (player.timeLeft <= 0) {
+               player.timeLeft = INITIALTIME;
+            }
+
+            // countdown
+            startMessageTimer();
+
+            setTimeout(()=> {
+               // timers
+               startTimers();
+
+               // starts
+               isGameStarted = true;
+               animate();
+            }, 4000);
+         }
+
+         // restart game after game over
          function restartGame() {
+            // hide game over
             gameOverDisplay.style.display = 'none';
             
+            //reset vars
+            countDownToStartGame = 3;
+
+            // lives
+            livesDisplay.textContent = LIFE.repeat(player.lives);
+
             //reset background
             background = undefined;
             background = new Background(currentLevel);
-            background.updatePattern(bckCtx, speed);
-            
+            background.updatePattern(bckCtx, INITIALSPEED);
+
             scoreDisplay.textContent = 'Level: ' + player.score;
 
             // reset player
             player = undefined;
-            player = new Player(shortSide / 2, shortSide / 2, shortSide * 0.2, speed, direction, timeLeft, score);
+            player = new Player(
+               SHORTSIDE / 2,
+               SHORTSIDE / 2,
+               SHORTSIDE * 0.2,
+               INITIALSPEED,
+               INITIALDIRECTION,
+               INITIALTIME,
+               INITIALSCORE,
+               INITIAL_LIFES,
+            );
 
             // reset bonus
             bonus = undefined;
-            bonus = new Bonus(myCanvas.width, myCanvas.height, shortSide / 2);
+            bonus = new Bonus(
+               foregroundCanvas.width, 
+               foregroundCanvas.height, 
+               SHORTSIDE / 2
+            );
 
             // reset track
             track = undefined;
-            track = new Track(x, y , N, shortSide, longSide, minLong, maxLong, minShort, maxShort, roundness);
-
-            //reset vars
-            countDownStartGame = 3;
+            track = new Track(
+               INITPOSIX, 
+               INITPOSIY, 
+               TOTRECTANGLES, 
+               SHORTSIDE, 
+               LONGSIDE, 
+               MINLONG, 
+               MAXLONG, 
+               MINSHORT, 
+               MAXSHORT, 
+               TRACKROUNDNESS);
 
             // reset canvas
-            ctx.clearRect(0, 0, myCanvas.width, myCanvas.height);
+            ctx.clearRect(0, 0, foregroundCanvas.width, foregroundCanvas.height);
+
+            // reset score
+            scoreDisplay.textContent = 'Level: ' + player.score;
+
+            // reset lives
+            if (player.lives > 0)
+               livesDisplay.textContent = LIFE.repeat(player.lives);
+            else
+               livesDisplay.textContent = '-';
+
+            // reset time
+            timeLeftDisplay.textContent = ' ⏱ ' + player.timeLeft;
 
             // start
             startGame();
@@ -209,27 +406,13 @@
                track.draw(ctx); 
                player.draw(ctx);
             ctx.restore();
-            // start message countdown
-            const timer = setInterval(function() {
-               startMessage(countDownStartGame, startMessageDisplay);
-               if (countDownStartGame <= 0) {
-                  clearInterval(timer);
-                  startMessageDisplay.style.display = 'none';
-               }
-               countDownStartGame--;
-            }, 1000);
 
-            // starts the clicks
+            // countdown
+            startMessageTimer();
+
             setTimeout(()=> {
-               // player timeout countdown
-               countdown = setInterval(function() {
-                     player.timeLeft --;
-                     }, 1000);
-
-               // generate a bonus every 10 sec
-               createBonusInterval = setInterval(function() {
-                  bonus.generateItem(bonus);
-               }, 10000);
+               // timers
+               startTimers();
 
                // starts
                isGameStarted = true;
@@ -237,7 +420,7 @@
             }, 4000);
          }
 
-         // start the game
+         // init game
          startGame();
       </script>
    </body>

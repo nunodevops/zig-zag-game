@@ -1,5 +1,6 @@
 class Track {
-   constructor(left, top, num, shortSide, longSide, minLong, maxLong, minShort, maxShort, roundness) {
+   constructor(left, top, num, shortSide, longSide, minLong, maxLong, minShort, maxShort, 
+      roundness, color = "rgba(255, 255, 255, 0.15)") {
       this.left = left;
       this.top = top;
       this.shortSide = shortSide;
@@ -14,7 +15,7 @@ class Track {
       this.shortSideRandom = shortSide;
       this.longSideRandom = longSide;
       this.shadowDirection = "down";
-      this.color = "rgba(255, 255, 255)";
+      this.color = color;
       this.hasShadow = true;
       this.roundness = roundness;
       this.lastShortSide = this.shortSideRandom;
@@ -47,6 +48,11 @@ class Track {
          this.longSideRandom = Math.floor(Math.random() * (this.maxLong - this.minLong + 1)) + this.minLong;
          this.shadowDirection = this.shadowDirection == "down" ? "up" : "down";
 
+         // change track color every 2 levels
+         if (player.score % 2 === 0) {
+            this.changeColor();
+         }
+
          // incress level
          background.level++;
          background.updateColors();
@@ -58,7 +64,7 @@ class Track {
       this.rectangles.shift();
    }
    
-   adjustFor(player) {
+   adjust() {
       for (let i = 0; i < this.rectangles.length; i++) {
          const rect = this.rectangles[i];
          if (rect.contains(player)) {
@@ -71,12 +77,14 @@ class Track {
       }
    }
    
-   contains(player) {
+   contains() {
       let isOnTrack = false;
-      let index=0;
+      let index = 0;
       for (const rect of this.rectangles) {
          if (rect.contains(player)) {
             isOnTrack = true;
+            player.rectIndex = index;
+            player.rectDirection = rect.direction;
             return isOnTrack;
          }
          index++;
@@ -85,14 +93,18 @@ class Track {
    }
    
    rotate(ctx) {
-      ctx.translate(myCanvas.width / 2, myCanvas.height / 2);
+      ctx.translate(foregroundCanvas.width / 2, foregroundCanvas.height / 2);
                ctx.rotate(-3 * Math.PI / 4);
                ctx.translate(-player.x, -player.y);
    }
 
    draw(ctx) {
       for (const rect of this.rectangles) {
-         rect.draw(ctx);
+         rect.draw(ctx, 0);
       }
+   }
+
+   changeColor() {
+      this.color = getRandomColor(true);
    }
 }

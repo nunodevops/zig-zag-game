@@ -15,7 +15,7 @@ class Particle {
         }
 
         // Randomly assign one of two colors
-        this.color = Math.random() > 0.5 ? "rgba(255, 69, 0, 0.8)" : "rgba(255, 140, 0, 0.8)"; // Fire-like colors
+        this.color = Math.random() > 0.5 ? "rgba(255, 69, 0, 0.4)" : "rgba(255, 140, 0, 0.4)"; // Fire-like colors
     }
 
     draw(ctx) {
@@ -35,6 +35,6 @@ class Particle {
     }
 
     isAlive() {
-        return this.life > 0;
+        return this.life > 0.1;
     }
 }

@@ -34,6 +34,20 @@ canvas {
     border-radius: 10px;
 }
 
+#lives {
+    position: absolute;
+    top: 10px;
+    color: white;
+    font-size: 18px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    left: 50%;
+    transform: translate(-50%, 0%);
+    text-align: center;
+    background-color: rgba(0,0,0,0.6);
+    padding: 5px 10px;
+    border-radius: 10px;
+}
+
 #startMessage, #gameOver {
     position: absolute;
     top: 40%;
@@ -53,8 +67,8 @@ canvas {
     margin: 10px auto;
     padding: 15px 30px;
     font-size: 20px;
-    font-family: 'beachday', Arial, Helvetica, sans-serif;
-    background-color: blue;
+    font-family: Arial, Helvetica, sans-serif;
+    background-color: darkblue;
     color: white;
     border: none;
     border-radius: 10px;
@@ -62,6 +76,35 @@ canvas {
     transition: background-color 0.3s ease;
 }
 #restartButton:hover {
+    background-color: blue;
+    transform: scale(1.05);
+}
+
+#pause {
+    position: absolute;
+    top: 50px;
+    color: white;
+    font-size: 18px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    right: 3%;
+    text-align: center;
+    padding: 5px 10px;
+    border-radius: 10px;
+}
+
+#pauseButton {
+    margin: 0px auto;
+    padding: 5px 30px 10px;
+    font-size: 20px;
+    font-family: Arial, Helvetica, sans-serif;
     background-color: darkblue;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+#pauseButton:hover {
+    background-color: blue;
     transform: scale(1.05);
 }
