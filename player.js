@@ -1,5 +1,5 @@
 class Player {
-   constructor(x, y, radius, speed, direction = "right", timeLeft, score) {
+   constructor(x, y, radius, speed, direction = "right", timeLeft, score, lives) {
       this.x = x;
       this.y = y;
       this.radius = radius;
@@ -8,10 +8,13 @@ class Player {
       this.timeLeft = timeLeft;
       this.score = score;
       this.particles = [];
-      this.velocityX = speed;
+      this.velocityX = this.speed;
       this.velocityY = 0;
-      this.targetVelocityX = speed;
+      this.targetVelocityX = this.speed;
       this.targetVelocityY = 0;
+      this.lives = lives;
+      this.rectIndex = 0;
+      this.rectDirection = direction;
    }
 
    move() {
@@ -34,9 +37,19 @@ class Player {
          this.targetVelocityX = 0;
          this.targetVelocityY = this.speed;
       } else {
-            this.direction = "right";
-            this.targetVelocityX = this.speed;
-            this.targetVelocityY = 0;
+         this.direction = "right";
+         this.targetVelocityX = this.speed;
+         this.targetVelocityY = 0;
+      }
+   }
+
+   reset() {
+      if (this.direction == "right") {
+         this.targetVelocityX = INITIALSPEED;
+         this.targetVelocityY = 0;
+      } else {
+         this.targetVelocityX = 0;
+         this.targetVelocityY = INITIALSPEED;
       }
    }
 
@@ -66,42 +79,63 @@ class Player {
       
    }
 
-   addtimeLeft() {
-      this.timeLeft += 30;
-      this.speed += .5;
+   updateSpeed() {
+      this.speed += .4;
    }
 
-   isValidtimeLeft(player) {
-      if (player.timeLeft <= 0) {
+   updateTime() {
+      this.timeLeft += 10;
+   }
+
+   isValidtimeLeft() {
+      if (this.timeLeft <= 0) {
          return false;
       }
       else
       {
-         if (player.timeLeft > 10) {
+         if (this.timeLeft > 30) {
             timeLeftDisplay.style.backgroundColor = 'darkgreen';
-         } else if (player.timeLeft < 10 && player.timeLeft > 5) {
+         } else if (this.timeLeft < 30 && this.timeLeft > 10) {
             timeLeftDisplay.style.backgroundColor = 'orange';
-         } else if (player.timeLeft < 5) {
+         } else if (this.timeLeft < 10) {
             timeLeftDisplay.style.backgroundColor = 'darkred';
          }
       }
       return true;
    }
 
-   die(player) {
-      if (player.radius > 0)
+   removeLive() {
+      this.lives--;
+   }
+
+   addLive() {
+      this.lives++;
+   }
+
+   die() {
+      if (this.radius > 0)
       {
-         player.radius--;
+         this.radius--;
+         this.particles.forEach(particle => particle.size *= 0.1);
       }
       else
       {
          isGameStarted = false;
          isGameOver = true;
          isPlayerDying = false;
+         this.particles = [];
+
+         if (this.lives > 0) {
+            const lastRect = track.rectangles[this.rectIndex];
+            this.x = lastRect.x + lastRect.width / 2;
+            this.y = lastRect.y + lastRect.height / 2;
+            this.direction = lastRect.direction;
+            this.reset();
+         }
       }
    }
 
-   addScore(player) {
-      player.score = background.level + 1;
+   addScore() {
+      this.score = background.level + 1;
    }
 }
