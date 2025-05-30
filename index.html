@@ -1,244 +1,737 @@
 <!DOCTYPE html>
 <html>
-   <head>
-      <title>ZigZag Game</title>
-      <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-      <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, shrink-to-fit=yes, user-scalable=no">
-      <link rel="stylesheet" type="text/css" href="style.css">
+    <head>
+        <title>ZigZag Game</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, shrink-to-fit=yes, user-scalable=no" />
+        <link rel="stylesheet" type="text/css" href="./view/style.css" />
 
-      <script src="rectangle.js"></script>
-      <script src="player.js"></script>
-      <script src="track.js"></script>
-      <script src="background.js"></script>
-      <script src="bonus.js"></script>
-      <script src="util.js"></script>
-      <script src="particles.js"></script>
-   </head>
-   <body style="margin: 0px; overflow: hidden">
-      <canvas id="bckCanvas"></canvas>
-      <canvas id="myCanvas"></canvas>
+        <script src="./model/rectangle.js"></script>
+        <script src="./model/player.js"></script>
+        <script src="./model/track.js"></script>
+        <script src="./model/backgroundObjects.js"></script>
+        <script src="./model/background.js"></script>
+        <script src="./model/bonus.js"></script>
+        <script src="./model/util.js"></script>
+        <script src="./model/particles.js"></script>
+        <script src="./model/patterns.js"></script>
+        <script src="./model/level.js"></script>
+        <script src="./model/translate.js"></script>
+    </head>
 
-      <div id="score"></div>
-      <div id="timeLeft"></div>
-      <div id="startMessage"></div>
-      <div id="gameOver">
-         <p id="gameOverMessage"></p>
-        <button id="restartButton" onclick="restartGame()"></button>
-      </div>
+    <body>
+        <canvas id="backgroundCanvas"></canvas>
+        <canvas id="backgroundTransitionCanvas"></canvas>
+        <canvas id="backgroundObjectsCanvas"></canvas>
+        <canvas id="foregroundCanvas"></canvas>
+        <canvas id="patternCanvas"></canvas>
+        <canvas id="trackEndCanvas"></canvas>
 
-      <script>
-         // consts
-         const shortSide = 100;
-         const maxShort = 125;
-         const minShort = 75;
-         const longSide = 300;
-         const maxLong = 550;
-         const minLong = 200;
-         const N = 10;
-         const x = 0;
-         const y = 0;
-         const timeLeft = 60; // 60 seconds
-         const score = 0;
-         const speed = 2;
-         const direction = 'right';
-         const roundness = 25;
+        <div id="title"></div>
 
-         let isGameStarted = false;
-         let isGameOver = false;
-         let isPlayerDying = false;
-         let countDownStartGame = 3;
-         let countdown;
-         let createBonusInterval;
-         let currentLevel = 0;
+        <div id="levelTitle"></div>
 
-         // background
-         const bckCanvas = document.getElementById('bckCanvas');
-         const bckCtx = bckCanvas.getContext('2d');
-         bckCanvas.width = window.innerWidth;
-         bckCanvas.height = window.innerHeight;
+        <div id="score"></div>
 
-         // create background
-         let background = new Background(currentLevel);
-         background.updatePattern(bckCtx, speed);
+        <div id="timeLeft">
+            <img id="timeIcon" src="" alt="Time" />
+            <span id="timeText"></span>
+        </div>
 
-         // foreground
-         const myCanvas = document.getElementById('myCanvas');
-         const ctx = myCanvas.getContext('2d');
-         myCanvas.width = window.innerWidth;
-         myCanvas.height = window.innerHeight;
-         
-         // track
-         let track = new Track(x, y , N, shortSide, longSide, minLong, maxLong, minShort, maxShort, roundness);
+        <div id="languageSelection">
+            <button id="ptBtn" class="languageBtn">Português (PT)</button>
+            <button id="enBtn" class="languageBtn">English (EN)</button>
+        </div>
 
-         // player
-         let player = new Player(
-            shortSide / 2,
-            shortSide / 2,
-            shortSide * 0.2,
-            speed,
-            direction,
-            timeLeft,
-            score
-         );
+        <div id="startMessage"></div>
 
-         // bonus
-         let bonus = new Bonus(myCanvas.width, myCanvas.height, shortSide / 2);
-         
-         // click management
-         myCanvas.addEventListener('pointerdown', () => {
-            if (!isPlayerDying && isGameStarted)
-               player.changeDirection();
-         });
+        <div id="gameOver">
+            <p id="gameOverMessage"></p>
+            <button id="restartButton" onclick="restartGame()"></button>
+        </div>
 
-         // score display
-         const scoreDisplay = document.getElementById('score');
-         scoreDisplay.textContent = 'Level: 0';
-   
-         // timeLeft display
-         const timeLeftDisplay = document.getElementById('timeLeft');
-         timeLeftDisplay.textContent = ' ⏱ ' + player.timeLeft;
+        <div id="levelWon">
+            <p id="levelWonMessage"></p>
+            <button id="nextLevelButton" onclick="nextLevel()"></button>
+        </div>
 
-         // start message
-         const startMessageDisplay = document.getElementById('startMessage');
-         startMessageDisplay.style.display = 'none';
+        <div id="lifes"></div>
 
-         function startMessage(numCountDown, msg) {
-            msg.style.display = 'block';
-            msg.innerText = 'Tap to change direction.' + '\n\n' + numCountDown;
-         }
+        <div id="pause">
+            <button id="pauseButton" onclick="pauseGame()">
+                <img id="pauseIcon" src="" alt="Pause" />
+            </button>
+        </div>
 
-         // game over message
-         const gameOverDisplay = document.getElementById('gameOver');
-         const gameOverMessageDisplay = document.getElementById('gameOverMessage');
-         const restartButtonDisplay = document.getElementById('restartButton');
+        <div id="pauseMessage"></div>
 
-         // animate game
-         function animate() {
-            // clear canvas
-            ctx.clearRect(0, 0, myCanvas.width, myCanvas.height);
+        <script>
+            // consts
+            const SHORTSIDE = 110;
+            const MAXSHORT = 120;
+            const MINSHORT = 80;
+            const LONGSIDE = 350;
+            const MAXLONG = 600;
+            const MINLONG = 250;
+            const INITIAL_TRACK_LENGTH = 10;
+            const INITPOSIX = 0;
+            const INITPOSIY = 0;
+            const INITIALTIME = 60; // 60 seconds
+            const INITIALSPEED = 4;
+            const INITIALDIRECTION = "left";
+            const TRACKROUNDNESS = 0;
+            const LIFE = "🔴";
+            const INITIAL_LIFES = 4;
+            const INIT_TRACK_COLOR = getRandomColor(true, 1, 0.95);
+            const PLAYER_INITIAL_RADIUS = SHORTSIDE * 0.2;
+            const INITIAL_LEVEL = 1;
+            const FINAL_LEVEL = 3;
+            const END_TRACK_TYPE = 99;
 
-            player.move();
-            track.adjustFor(player);
-            
-            ctx.save();
-               track.rotate(ctx);
-               track.draw(ctx);
-               bonus.draw(ctx);
-               player.draw(ctx);
+            const fps = 60; // Set your desired frame rate
+            const interval = 1000 / fps;
+            let lastTime = performance.now();
 
-               // player collided
-               if (!track.contains(player) || !player.isValidtimeLeft(player) || isPlayerDying) {
-                  clearInterval(countdown);
-                  clearInterval(createBonusInterval);
-                  isPlayerDying = true;
-                  player.die(player);
-                  if(isPlayerDying == false)
-                     gameOver();
-               }
-            ctx.restore();
+            let isGameStarted = false;
+            let isGamePaused = false;
+            let isGameOver = false;
+            let isBackgroundActive = true;
+            let countDownToStartGame = 3;
+            let countdown;
+            let createBonusInterval;
+            let createBonusLifeInterval;
+            let createGrowInterval;
+            let backgroundObjects = [];
+            let isNewLevel = false;
 
-            // add score
-            player.addScore(player);
-            scoreDisplay.textContent = 'Level: ' + player.score;
+            // language selection
+            const languageBox = document.getElementById("languageSelection");
+            const ptLngButton = document.getElementById("ptBtn");
+            const enLngButton = document.getElementById("enBtn");
+            let currentLanguage = "EN";
 
-            // timeLeft
-            timeLeftDisplay.textContent = ' ⏱ ' + player.timeLeft;
+            // translations
+            const translation = new Translate();
 
-            // Update and draw background
-            background.updatePattern(bckCtx, player.speed);
-            
-            // request frame
-            if (isGameStarted)
-               requestAnimationFrame(animate);
-         }
+            // Add event listeners for language buttons
+            ptLngButton.addEventListener("click", () => selectLanguage("PT"));
+            enLngButton.addEventListener("click", () => selectLanguage("EN"));
 
-         function gameOver() {
-            gameOverDisplay.style.display = 'block';
-            gameOverMessageDisplay.innerText = 'Game Over';
-            restartButtonDisplay.innerText = 'Restart';
-            background.active = false;
-            restartButtonDisplay.onclick = () => {
-               restartGame();
+            // patterns
+            const patternCanvas = document.getElementById("patternCanvas");
+            const patternContext = patternCanvas.getContext("2d");
+            patternCanvas.style.display = "none";
+
+            // track end
+            const trackEndCanvas = document.getElementById("trackEndCanvas");
+            const trackEndContext = trackEndCanvas.getContext("2d");
+            trackEndCanvas.style.display = "none";
+
+            // background
+            const backgroundCanvas = document.getElementById("backgroundCanvas");
+            const bckCtx = backgroundCanvas.getContext("2d");
+            backgroundCanvas.width = window.innerWidth;
+            backgroundCanvas.height = window.innerHeight;
+
+            // background objects
+            const backgroundObjectsCanvas = document.getElementById("backgroundObjectsCanvas");
+            const bckObjCtx = backgroundObjectsCanvas.getContext("2d");
+            backgroundObjectsCanvas.width = window.innerWidth;
+            backgroundObjectsCanvas.height = window.innerHeight;
+
+            // foreground
+            const foregroundCanvas = document.getElementById("foregroundCanvas");
+            const ctx = foregroundCanvas.getContext("2d");
+            foregroundCanvas.width = window.innerWidth;
+            foregroundCanvas.height = window.innerHeight;
+
+            // background transition
+            const transitionCanvas = document.getElementById("backgroundTransitionCanvas");
+            const transitionCtx = transitionCanvas.getContext("2d");
+            transitionCanvas.width = window.innerWidth;
+            transitionCanvas.height = window.innerHeight;
+            transitionCanvas.style.display = "none"; // Initially hidden
+
+            ////////////////////////////////////////////////// objects
+
+            // levels
+            let level = new Level(INITIAL_LEVEL);
+            level.createLevel(INITIAL_LEVEL);
+
+            // background
+            let background = new Background(level.level);
+
+            // player
+            let player = new Player(SHORTSIDE / 2, SHORTSIDE / 2, PLAYER_INITIAL_RADIUS, INITIALSPEED, INITIALDIRECTION, INITIALTIME, level.levelScore, INITIAL_LIFES, INITIAL_LEVEL);
+
+            // track
+            let track = new Track(
+                INITPOSIX,
+                INITPOSIY,
+                INITIAL_TRACK_LENGTH,
+                SHORTSIDE,
+                LONGSIDE,
+                MINLONG,
+                MAXLONG,
+                MINSHORT,
+                MAXSHORT,
+                TRACKROUNDNESS,
+                INIT_TRACK_COLOR,
+                level.trackType,
+                level.trackPattern,
+                level.level
+            );
+
+            // bonus
+            let bonus = new Bonus(foregroundCanvas.width, foregroundCanvas.height, SHORTSIDE / 2);
+
+            // background objects
+            function createBackgroundObjects() {
+                for (let i = 0; i < level.numBackgroundObjects; i++) {
+                    const backgroundObjectSize = Math.random() * 0.3 + 0.4;
+                    const x = Math.random() * backgroundObjectsCanvas.width;
+                    const y = -(backgroundObjectsCanvas.height + backgroundObjectSize * 1.2 + Math.random() * backgroundObjectsCanvas.height);
+                    const randomBackgroundObjectType = Math.floor(Math.random() * 5);
+                    const speed = Math.random() * 0.5 + 0.1;
+                    backgroundObjects.push(new BackgroundObject(x, y, backgroundObjectSize, level.level, level.subLevelNum, randomBackgroundObjectType, speed));
+                }
+            }
+
+            // title
+            const titleDisplay = document.getElementById("title");
+            titleDisplay.style.display = "block";
+            titleDisplay.innerText = "ZIGZAG MANIA";
+
+            // Level Title
+            const levelTitleDisplay = document.getElementById("levelTitle");
+            levelTitleDisplay.style.display = "none";
+
+            // score display
+            const scoreDisplay = document.getElementById("score");
+            scoreDisplay.style.display = "none";
+            scoreDisplay.textContent = level.levelScore;
+
+            // player lifes
+            const lifesDisplay = document.getElementById("lifes");
+            lifesDisplay.style.display = "none";
+            lifesDisplay.textContent = LIFE.repeat(player.lifes);
+
+            // timeLeft display
+            const timeLeftDisplay = document.getElementById("timeLeft");
+            const timeIconDisplay = document.getElementById("timeIcon");
+            const timeTextDisplay = document.getElementById("timeText");
+            timeLeftDisplay.style.display = "none";
+            timeTextDisplay.innerText = player.timeLeft;
+            timeIconDisplay.src = "./media/" + level.timeObject;
+
+            // start message
+            const startMessageDisplay = document.getElementById("startMessage");
+            startMessageDisplay.style.display = "none";
+
+            function startMessageTimer(lang) {
+                // level title
+                levelTitleDisplay.style.fontFamily = (level.levelTitleFont || "Helvetica") + ", Helvetica, Arial, Lucida, sans-serif";
+                levelTitleDisplay.style.fontSize = level.levelFontSize;
+                levelTitleDisplay.innerText = translation.getTranslation(currentLanguage, "titleOfLevel_" + level.level);
+                levelTitleDisplay.style.display = "block";
+
+                // start message countdown
+                const timer = setInterval(function () {
+                    startMessageDisplay.innerText = translation.getTranslation(currentLanguage, "startMessage") + "\n\n" + countDownToStartGame;
+                    startMessageDisplay.style.display = "block";
+                    if (countDownToStartGame <= 0) {
+                        clearInterval(timer);
+                        startMessageDisplay.style.display = "none";
+                        levelTitleDisplay.style.display = "none";
+                    }
+                    countDownToStartGame--;
+                }, 1000);
+            }
+
+            // game over message
+            const gameOverDisplay = document.getElementById("gameOver");
+            const gameOverMessageDisplay = document.getElementById("gameOverMessage");
+            const restartButtonDisplay = document.getElementById("restartButton");
+            gameOverDisplay.style.display = "none";
+
+            // level won message
+            const levelWonDisplay = document.getElementById("levelWon");
+            const levelWonMessageDisplay = document.getElementById("levelWonMessage");
+            const nextLevelButtonDisplay = document.getElementById("nextLevelButton");
+            levelWonDisplay.style.display = "none";
+
+            // pause
+            const pauseMessageDisplay = document.getElementById("pauseMessage");
+            const pauseGameIcon = document.getElementById("pauseIcon");
+            pauseGameIcon.src = "./media/pause.svg";
+            pauseMessageDisplay.style.display = "none";
+
+            const pauseButtonDisplay = document.getElementById("pause");
+
+            pauseButtonDisplay.style.display = "none";
+
+            function pauseGame() {
+                if (isGameStarted) {
+                    if (isGamePaused) {
+                        isGamePaused = false;
+                        pauseGameIcon.src = "./media/pause.svg";
+                        pauseMessageDisplay.style.display = "none";
+                        startTimers();
+                        animate();
+                    } else {
+                        isGamePaused = true;
+                        pauseGameIcon.src = "./media/play.svg";
+                        pauseMessageDisplay.style.display = "block";
+                        pauseMessageDisplay.innerText = translation.getTranslation(currentLanguage, "pauseMessage");
+                        stopTimers();
+                    }
+                }
+            }
+
+            // start timers
+            function startTimers() {
+                // player timeout countdown
+                countdown = setInterval(function () {
+                    player.timeLeft--;
+                }, 1000);
+
+                // generate a bonus every 10 sec
+                createBonusInterval = setInterval(function () {
+                    bonus.generateItem(bonus, track.rectangles, 0);
+                }, level.generateBonusItemTimer);
+
+                // generate a life every 20 sec to 60 seg
+                //const randTime = Math.floor(Math.random() * 5) + 2;
+                createBonusLifeInterval = setInterval(function () {
+                    bonus.generateItem(bonus, track.rectangles, 1);
+                }, level.generateBonusLifeTimer);
+
+                // generate a grow every 60 sec
+                createGrowInterval = setInterval(function () {
+                    bonus.generateItem(bonus, track.rectangles, 2);
+                }, level.generateGrowTimer);
+            }
+
+            // stop timers
+            function stopTimers() {
+                clearInterval(countdown);
+                clearInterval(createBonusInterval);
+                clearInterval(createBonusLifeInterval);
+                clearInterval(createGrowInterval);
+            }
+
+            ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            // animate game
+            function animate(currentTime) {
+                const delta = currentTime - lastTime;
+
+                if (delta > interval) {
+                    lastTime = currentTime - (delta % interval);
+
+                    // clear canvas
+                    ctx.clearRect(0, 0, foregroundCanvas.width, foregroundCanvas.height);
+
+                    player.move();
+                    track.adjust(player);
+
+                    ctx.save();
+                    track.rotate(ctx, player);
+                    track.draw(ctx);
+                    bonus.draw(ctx, player, level.playerSpeedIncrement, level.playerTimeIncrement);
+                    player.draw(ctx, level.level);
+                    ctx.restore();
+
+                    // player collided
+                    if (!track.contains(player) || !player.isValidtimeLeft() || player.isDying || player.score == 0) {
+                        stopTimers();
+                        player.isDying = true;
+                        player.die(track.rectangles);
+
+                        if (player.isDying == false) {
+                            if (player.lifes == 1 && player.score > 0) {
+                                gameOver();
+                            } else {
+                                if (player.score > 0 && !isNewLevel) {
+                                    player.removeLife();
+                                    restoreGame();
+                                } else {
+                                    playerWonLevel();
+                                }
+                            }
+                        }
+                    }
+
+                    // show score
+                    scoreDisplay.textContent = player.score;
+
+                    // player lifes
+                    if (player.lifes > 0) lifesDisplay.textContent = LIFE.repeat(player.lifes);
+                    else lifesDisplay.textContent = "-";
+
+                    // timeLeft
+                    timeTextDisplay.innerText = player.timeLeft;
+
+                    // rectangle count
+                    if (track.rectangleCount == level.levelScore - 1) {
+                        track.trackEnd = true;
+                    }
+                }
+
+                // request frame
+                if (isGameStarted && !isGamePaused) requestAnimationFrame(animate);
+            }
+
+            ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+            function animateBackground() {
+                // Clear the canvas
+                bckObjCtx.clearRect(0, 0, backgroundObjectsCanvas.width, backgroundObjectsCanvas.height);
+
+                // draw background objects
+                backgroundObjects.forEach((object) => {
+                    object.update(player.speed, object);
+                    object.draw(bckObjCtx, object);
+                });
+
+                // change background
+                Object.entries(level.subLevels).forEach(([rectNum, subLevelNum]) => {
+                    if (rectNum == player.score && player.score != level.subLevel) {
+                        level.subLevel = player.score;
+
+                        const oldSubLevelNum = level.subLevelNum;
+                        level.subLevelNum = subLevelNum;
+
+                        // Only start a new transition if we're not already transitioning
+                        if (!background.isTransitioning) {
+                            background.transition(level.level, subLevelNum);
+
+                            // Add any new objects needed
+                            resetBackgroundObjects();
+                        }
+
+                        // change track pattern
+                        track.trackPattern = subLevelNum;
+                        createPattern(level.trackType, subLevelNum, level.level);
+                    }
+                });
+
+                if (isBackgroundActive) requestAnimationFrame(animateBackground);
+            }
+
+            ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+            // reset background objects
+            function resetBackgroundObjects() {
+                // reset background objects
+                //backgroundObjects = [];
+                createBackgroundObjects();
+                bckObjCtx.clearRect(0, 0, backgroundObjectsCanvas.width, backgroundObjectsCanvas.height);
+            }
+
+            // player won level
+            function playerWonLevel() {
+                levelWonDisplay.style.display = "block";
+                levelWonMessageDisplay.innerText = translation.getTranslation(currentLanguage, "levelComplete");
+                nextLevelButtonDisplay.innerText = translation.getTranslation(currentLanguage, "nextLevel");
+                isBackgroundActive = false;
+                nextLevelButtonDisplay.onclick = () => {
+                    nextLevel();
+                };
+            }
+
+            // next level
+            function nextLevel() {
+                if (level.level == FINAL_LEVEL) {
+                    levelWonDisplay.style.display = "none";
+                    gameOverDisplay.style.display = "block";
+                    gameOverMessageDisplay.innerText = translation.getTranslation(currentLanguage, "gameComplete");
+                    restartButtonDisplay.innerText = translation.getTranslation(currentLanguage, "restart");
+                    isBackgroundActive = false;
+                    isNewLevel = false;
+                    restartButtonDisplay.onclick = () => {
+                        restartGame();
+                    };
+                    return;
+                } else {
+                    level.level++;
+                    level.subLevelNum = 0;
+                    level.createLevel(level.level);
+                    player.score = level.levelScore;
+                    backgroundObjects = [];
+                    isNewLevel = true;
+                    restartGame();
+                    levelWonDisplay.style.display = "none";
+                }
+            }
+
+            // game over
+            function gameOver() {
+                gameOverDisplay.style.display = "block";
+                gameOverMessageDisplay.innerText = translation.getTranslation(currentLanguage, "gameOver");
+                restartButtonDisplay.innerText = translation.getTranslation(currentLanguage, "restart");
+                isBackgroundActive = false;
+                restartButtonDisplay.onclick = () => {
+                    restartGame();
+                };
+            }
+
+            // restore game, after player die
+            function restoreGame() {
+                isBackgroundActive = false;
+                isGameStarted = false;
+                isGameOver = false;
+                player.isDying = false;
+                player.isGrowing = false;
+
+                // reset player position
+                player.speed = INITIALSPEED;
+                if (player.direction == "left") {
+                    player.velocityX = INITIALSPEED;
+                    player.velocityY = 0;
+                    player.targetVelocityX = INITIALSPEED;
+                    player.targetVelocityY = 0;
+                } else {
+                    player.velocityX = 0;
+                    player.velocityY = INITIALSPEED;
+                    player.targetVelocityX = 0;
+                    player.targetVelocityY = INITIALSPEED;
+                }
+
+                player.radius = SHORTSIDE * 0.2;
+                player.draw(ctx, level.level);
+
+                //reset vars
+                countDownToStartGame = 3;
+
+                // restore time
+                if (player.timeLeft <= 0) {
+                    player.timeLeft = INITIALTIME;
+                }
+
+                // reset positions
+                requestAnimationFrame(animate);
+
+                // countdown
+                startMessageTimer();
+
+                setTimeout(() => {
+                    // timers
+                    startTimers();
+
+                    // starts
+                    isGameStarted = true;
+                    isBackgroundActive = true;
+                    animate();
+                    animateBackground();
+                }, 4000);
+            }
+
+            // restart game after game over
+            function restartGame() {
+                // reset level
+                // reset lifes
+                let nextLevelLifes = INITIAL_LIFES;
+
+                if (isNewLevel) {
+                    nextLevelLifes = player.lifes;
+                } else {
+                    level = undefined;
+                    level = new Level(INITIAL_LEVEL);
+                    level.createLevel(INITIAL_LEVEL);
+                }
+
+                // reset is new level
+                isNewLevel = false;
+
+                //
+                isBackgroundActive = false;
+                // hide game over
+                gameOverDisplay.style.display = "none";
+
+                //reset vars
+                countDownToStartGame = 3;
+
+                // lifes
+                lifesDisplay.textContent = LIFE.repeat(player.lifes);
+
+                // reset background objects
+                backgroundObjects = [];
+                resetBackgroundObjects();
+
+                scoreDisplay.textContent = player.score;
+
+                // reset player
+                player = undefined;
+                player = new Player(SHORTSIDE / 2, SHORTSIDE / 2, PLAYER_INITIAL_RADIUS, INITIALSPEED, INITIALDIRECTION, INITIALTIME, level.levelScore, nextLevelLifes, level.level);
+
+                player.isGrowing = false;
+
+                // reset bonus
+                bonus = undefined;
+                bonus = new Bonus(foregroundCanvas.width, foregroundCanvas.height, SHORTSIDE / 2);
+
+                // reset track
+                track = undefined;
+                track = new Track(
+                    INITPOSIX,
+                    INITPOSIY,
+                    INITIAL_TRACK_LENGTH,
+                    SHORTSIDE,
+                    LONGSIDE,
+                    MINLONG,
+                    MAXLONG,
+                    MINSHORT,
+                    MAXSHORT,
+                    TRACKROUNDNESS,
+                    INIT_TRACK_COLOR,
+                    level.trackType,
+                    level.trackPattern,
+                    level.level
+                );
+
+                // reset canvas
+                ctx.clearRect(0, 0, foregroundCanvas.width, foregroundCanvas.height);
+
+                //reset background
+                background = undefined;
+                background = new Background(level.level);
+                background.drawBackground(level.level, level.subLevelNum);
+
+                // reset score
+                scoreDisplay.textContent = player.score;
+
+                // reset lifes
+                if (player.lifes > 0) lifesDisplay.textContent = LIFE.repeat(player.lifes);
+                else lifesDisplay.textContent = "-";
+
+                // reset time
+                if (player.timeLeft > 30) {
+                    timeLeftDisplay.style.backgroundColor = "darkgreen";
+                } else if (player.timeLeft < 30 && player.timeLeft > 10) {
+                    timeLeftDisplay.style.backgroundColor = "orange";
+                } else if (player.timeLeft < 10) {
+                    timeLeftDisplay.style.backgroundColor = "darkred";
+                }
+                timeTextDisplay.innerText = player.timeLeft;
+                timeIconDisplay.src = "./media/" + level.timeObject;
+
+                // start
+                isBackgroundActive = true;
+                startGame();
+            }
+
+            // start game
+            function startGame() {
+                // game started
+                isGameOver = false;
+                player.isDying = false;
+                player.isGrowing = false;
+                isBackgroundActive = true;
+                isGameStarted = false; // Set to false initially
+                countDownToStartGame = 3; // Reset countdown
+                player.radius = SHORTSIDE * 0.2;
+
+                // hide
+                gameOverDisplay.style.display = "none";
+                levelWonDisplay.style.display = "none";
+
+                // show track and player
+                ctx.save();
+                track.rotate(ctx, player);
+                track.draw(ctx);
+                player.draw(ctx, level.level);
+                ctx.restore();
+
+                // Start countdown
+                startMessageTimer();
+
+                setTimeout(() => {
+                    // timers
+                    startTimers();
+
+                    // starts
+                    isGameStarted = true;
+                    animate();
+                    animateBackground();
+                }, 4000);
+            }
+
+            // initial image
+            const img = new Image();
+            img.src = "./media/gameStartImg.jpg";
+            img.onload = function () {
+                coverCanvasWithImage(ctx, img);
             };
-         }
 
-         function restartGame() {
-            gameOverDisplay.style.display = 'none';
-            
-            //reset background
-            background = undefined;
-            background = new Background(currentLevel);
-            background.updatePattern(bckCtx, speed);
-            
-            scoreDisplay.textContent = 'Level: ' + player.score;
+            function coverCanvasWithImage(ctx, img) {
+                const canvas = ctx.canvas;
 
-            // reset player
-            player = undefined;
-            player = new Player(shortSide / 2, shortSide / 2, shortSide * 0.2, speed, direction, timeLeft, score);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // reset bonus
-            bonus = undefined;
-            bonus = new Bonus(myCanvas.width, myCanvas.height, shortSide / 2);
+                // Calculate aspect ratios
+                const imgRatio = img.width / img.height;
+                const canvasRatio = canvas.width / canvas.height;
 
-            // reset track
-            track = undefined;
-            track = new Track(x, y , N, shortSide, longSide, minLong, maxLong, minShort, maxShort, roundness);
+                let drawWidth, drawHeight, drawX, drawY;
 
-            //reset vars
-            countDownStartGame = 3;
+                if (canvasRatio > imgRatio) {
+                    // Canvas is wider than the image
+                    drawWidth = canvas.width;
+                    drawHeight = canvas.width / imgRatio;
+                    drawX = 0;
+                    drawY = (canvas.height - drawHeight) / 2;
+                } else {
+                    // Canvas is taller than the image
+                    drawHeight = canvas.height;
+                    drawWidth = canvas.height * imgRatio;
+                    drawY = 0;
+                    drawX = (canvas.width - drawWidth) / 2;
+                }
 
-            // reset canvas
-            ctx.clearRect(0, 0, myCanvas.width, myCanvas.height);
+                // Clear the canvas and draw the image
 
-            // start
-            startGame();
-         }
+                ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+            }
 
-         // start game
-         function startGame() {
-            // game started
-            isGameOver = false;
-            isPlayerDying = false;
+            // select language and start game
+            function selectLanguage(lang) {
+                currentLanguage = lang;
+                languageBox.style.display = "none";
 
-            // hide
-            gameOverDisplay.style.display = 'none';
+                // init game
+                initGame();
+            }
 
-            // show track and player
-            ctx.save();
-               track.rotate(ctx);
-               track.draw(ctx); 
-               player.draw(ctx);
-            ctx.restore();
-            // start message countdown
-            const timer = setInterval(function() {
-               startMessage(countDownStartGame, startMessageDisplay);
-               if (countDownStartGame <= 0) {
-                  clearInterval(timer);
-                  startMessageDisplay.style.display = 'none';
-               }
-               countDownStartGame--;
-            }, 1000);
+            function initGame() {
+                // background
+                ctx.clearRect(0, 0, foregroundCanvas.width, foregroundCanvas.height);
+                background.drawBackground(level.level, level.subLevelNum);
 
-            // starts the clicks
-            setTimeout(()=> {
-               // player timeout countdown
-               countdown = setInterval(function() {
-                     player.timeLeft --;
-                     }, 1000);
+                // background objects
+                createBackgroundObjects();
 
-               // generate a bonus every 10 sec
-               createBonusInterval = setInterval(function() {
-                  bonus.generateItem(bonus);
-               }, 10000);
+                // click management
+                foregroundCanvas.addEventListener("pointerdown", () => {
+                    if (!player.isDying && isGameStarted && !isGamePaused) player.changeDirection();
+                });
 
-               // starts
-               isGameStarted = true;
-               animate();  
-            }, 4000);
-         }
+                // hide title
+                titleDisplay.style.display = "none";
 
-         // start the game
-         startGame();
-      </script>
-   </body>
+                // show score
+                scoreDisplay.style.display = "block";
+
+                // show timeLeft
+                timeLeftDisplay.style.display = "block";
+
+                // show pause
+                pauseButtonDisplay.style.display = "block";
+
+                // show lifes
+                lifesDisplay.style.display = "block";
+
+                startGame();
+            }
+        </script>
+    </body>
 </html>
